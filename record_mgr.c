@@ -178,7 +178,7 @@ extern RC closeTable(RM_TableData *rel) {
 
 
 int getNumTuples(RM_TableData *rel) {
-    return RC_OK; // You may need to change this to a relevant return type, as this function returns an int.
+    return RC_OK; 
 }
 
 #pragma endregion 

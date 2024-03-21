@@ -76,9 +76,10 @@ int
 main (void) 
 {
 	testName = "";
-    
-	testInsertManyRecords();
+    testGetRecordSize();
 	/*
+	testInsertManyRecords();
+	
 	testRecords();
 	testCreateTableAndInsert();
 	testUpdateTable();
@@ -718,4 +719,30 @@ void printRecord(Schema *schema, Record *record) {
 
         freeVal(value);
     }
+}
+
+// Prototipo de la función testSchema
+extern Schema *testSchema(void);
+
+// Function to test getRecordSize
+void testGetRecordSize(void) {
+    // Obtain the schema using testSchema
+    Schema *schema = testSchema();
+
+    // Calculate the record size
+    int recordSize = getRecordSize(schema);
+    printf("Calculated record size is: %d\n", recordSize);
+
+    // Expected size of the record
+    int expectedSize = 13;
+
+    // Check if the calculated size is as expected
+    if(recordSize == expectedSize) {
+        printf("Test successful: The record size is correct.\n");
+    } else {
+        printf("Test failed: Expected size was %d, but got %d.\n", expectedSize, recordSize);
+    }
+
+    // Free memory
+    freeSchema(schema);
 }
