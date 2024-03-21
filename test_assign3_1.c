@@ -76,10 +76,10 @@ int
 main (void) 
 {
 	testName = "";
-    testGetRecordSize();
-	/*
-	testInsertManyRecords();
+    testGetRecordSize(); //this is an extra test
 	
+	testInsertManyRecords();
+	/*
 	testRecords();
 	testCreateTableAndInsert();
 	testUpdateTable();

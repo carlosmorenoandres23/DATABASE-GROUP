@@ -91,9 +91,9 @@ extern RC closePageFile (SM_FileHandle *fHandle) {
 
 extern RC destroyPageFile (char *fileName) {
 	// Opening file stream in read mode. 'r' mode creates an empty file for reading only.	
-	pageFile = fopen(fileName, "r");
 	
-	if(pageFile == NULL)
+	
+	if(fileName == NULL)
 		return RC_FILE_NOT_FOUND; 
 	
 	// Deleting the given filename so that it is no longer accessible.	
