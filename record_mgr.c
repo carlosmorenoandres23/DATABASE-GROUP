@@ -129,50 +129,89 @@ extern RC deleteTable(char *name) {
 }
 
 
-extern RC openTable(RM_TableData *rel, char *name) {
-    // Asegurar que rel no es NULL
-    if (rel == NULL) {
-        return RC_ERROR;
-    }
-
-    // Asignar memoria para el esquema y datos de gestión (si es necesario)
-    rel->schema = (Schema *)calloc(1,sizeof(Schema));
-    if (rel->schema == NULL) {
-        return RC_ERROR;
-    }
-
-    // Aquí debes cargar el esquema desde el archivo de la tabla
-    // Esto depende de cómo hayas implementado la serialización del esquema en createTable
-
-    // Inicializar el buffer pool para esta tabla
-    rel->mgmtData = calloc(1, sizeof(BM_BufferPool));
-    if (rel->mgmtData == NULL) {
-        free(rel->schema);
-        return RC_ERROR;
-    }
-
-    initBufferPool((BM_BufferPool *)rel->mgmtData, name, MAX_NUMBER_OF_PAGES, RS_LRU, NULL);
-
-    rel->name = strdup(name);  // Asegurarse de liberar esto en closeTable
-    return RC_OK;
-}
-extern RC closeTable(RM_TableData *rel) {
-    // Asegurar que rel no es NULL
-    if (rel == NULL) {
-        return RC_ERROR;
-    }
-
-    // Cerrar el buffer pool asociado con la tabla
-    shutdownBufferPool((BM_BufferPool *)rel->mgmtData);
-    free(rel->mgmtData);
-
-    // Liberar el esquema
-    freeSchema(rel->schema);
-
-    // Liberar el nombre de la tabla
-    free(rel->name);
+//really important change this function,
+extern RC openTable (RM_TableData *rel, char *name)
+{
+	SM_PageHandle pageHandle;    
+	
+	int attributeCount, k;
+	
+	// Setting table's meta data to our custom record manager meta data structure
+	rel->mgmtData = recordManager;
+	// Setting the table's name
+	rel->name = name;
     
-    return RC_OK;
+	// Pinning a page i.e. putting a page in Buffer Pool using Buffer Manager
+	pinPage(&recordManager->bufferPool, &recordManager->pageHandle, 0);
+	
+	// Setting the initial pointer (0th location) if the record manager's page data
+	pageHandle = (char*) recordManager->pageHandle.data;
+	
+	// Retrieving total number of tuples from the page file
+	recordManager->tuplesCount= *(int*)pageHandle;
+	pageHandle = pageHandle + sizeof(int);
+
+	// Getting free page from the page file
+	recordManager->freePage= *(int*) pageHandle;
+    	pageHandle = pageHandle + sizeof(int);
+	
+	// Getting the number of attributes from the page file
+    	attributeCount = *(int*)pageHandle;
+	pageHandle = pageHandle + sizeof(int);
+ 	
+	Schema *schema;
+
+	// Allocating memory space to 'schema'
+	schema = (Schema*) malloc(sizeof(Schema));
+    
+	// Setting schema's parameters
+	schema->numAttr = attributeCount;
+	schema->attrNames = (char**) malloc(sizeof(char*) *attributeCount);
+	schema->dataTypes = (DataType*) malloc(sizeof(DataType) *attributeCount);
+	schema->typeLength = (int*) malloc(sizeof(int) *attributeCount);
+
+	// Allocate memory space for storing attribute name for each attribute
+	for(k = 0; k < attributeCount; k++)
+		schema->attrNames[k]= (char*) malloc(ATTRIBUTE_SIZE);
+      
+	for(k = 0; k < schema->numAttr; k++)
+    	{
+		// Setting attribute name
+		strncpy(schema->attrNames[k], pageHandle, ATTRIBUTE_SIZE);
+		pageHandle = pageHandle + ATTRIBUTE_SIZE;
+	   
+		// Setting data type of attribute
+		schema->dataTypes[k]= *(int*) pageHandle;
+		pageHandle = pageHandle + sizeof(int);
+
+		// Setting length of datatype (length of STRING) of the attribute
+		schema->typeLength[k]= *(int*)pageHandle;
+		pageHandle = pageHandle + sizeof(int);
+	}
+	
+	// Setting newly created schema to the table's schema
+	rel->schema = schema;	
+
+	// Unpinning the page i.e. removing it from Buffer Pool using BUffer Manager
+	unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
+
+	// Write the page back to disk using BUffer Manger
+	forcePage(&recordManager->bufferPool, &recordManager->pageHandle);
+
+	return RC_OK;
+}   
+  
+
+
+
+extern RC closeTable (RM_TableData *rel)
+{
+	// Storing the Table's meta data
+	RecordManager *recordManager = rel->mgmtData;
+	// Shutting down Buffer Pool	
+	shutdownBufferPool(&recordManager->bufferPool);
+	//rel->mgmtData = NULL;
+	return RC_OK;
 }
 
 
@@ -190,28 +229,30 @@ extern RC insertRecord(RM_TableData *rel, Record *record) {
     if (rel == NULL || record == NULL) {
         return RC_FILE_NOT_FOUND;
     }
- 
+   
     // Cast mgmtData to RecordManager for easier access
     RecordManager *rm = (RecordManager *)rel->mgmtData;
-
+    
     // Prepare variables
     BM_PageHandle *pageHandle = MAKE_PAGE_HANDLE();
     char *data;
     int recordSize = getRecordSize(rel->schema);
     int numSlots = PAGE_SIZE / recordSize; // Assuming each record fits in a slot and PAGE_SIZE is a constant
- 
+    printf("achive line 202\n");
     // Set to the first available page
     RID *rid = &record->id;
     
     rid->page = rm->freePage; // linea del error
-
+    printf("achive line 207\n");
     // Iterate through pages to find a free slot
     bool isRecordInserted = false;
    
     while (!isRecordInserted) {
+        
         CHECK(pinPage(&rm->bufferPool, pageHandle, rid->page));
+        printf("achive line 214\n");
         data = pageHandle->data;
-
+        
         for (int slot = 0; slot < numSlots; slot++) {
             if (data[slot * recordSize] != '+') { // Assuming '+' denotes a filled slot
                 rid->slot = slot;
@@ -400,27 +441,30 @@ RC createRecord(Record **record, Schema *schema) {
     }
 
     *record = tempRecord;
+    
     return RC_OK;
 }
 
   // modifiying
 extern RC freeRecord(Record *record) {
-    if (record != NULL) {
-        // Ensure that any dynamically allocated fields within the record are freed first
-        // Assuming 'data' is dynamically allocated within the record, if applicable
-        if (record->data != NULL) {
-            free(record->data);
-        }
-
-        // Freeing the record structure itself
-        free(record);
-    } else {
+    if (record == NULL) {
         // Handle the case where the record is NULL
         return RC_ERROR; // Or an appropriate error code for a null pointer
     }
 
+    // Ensure that any dynamically allocated fields within the record are freed
+    if (record->data != NULL) {
+        free(record->data);
+        record->data = NULL; // Setting pointer to NULL after freeing
+    }
+
+    // Freeing the record structure itself
+    free(record);
+    record = NULL; // Setting pointer to NULL after freeing
+
     return RC_OK;
 }
+
 
 
 

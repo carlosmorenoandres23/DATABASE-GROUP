@@ -404,12 +404,14 @@ RC forcePage(BM_BufferPool *const bm, BM_PageHandle *const page) {
 // If the buffer pool is full, then it uses appropriate page replacement strategy to replace a page in memory with the new page being pinned.
 
 RC pinPage(BM_BufferPool *const bm, BM_PageHandle *const page, const PageNumber pageNum) {
+    
     PageFrame *pageFrame = (PageFrame *)bm->mgmtData;
 
     // Handling the case where the buffer pool is empty
     if (pageFrame[0].pageNum == -1) {
         // Check if buffer pool is empty and this is the first page to be pinned
         // Read page from disk and initialize page frame's content in the buffer pool
+         printf("we achive 413 line\n");
         SM_FileHandle fh;
         openPageFile(bm->pageFile, &fh); // Open the page file corresponding to the buffer pool
 
@@ -431,7 +433,7 @@ RC pinPage(BM_BufferPool *const bm, BM_PageHandle *const page, const PageNumber 
         // Buffer pool has at least one page
         bool isBufferFull = true;
         int i;
-
+          printf("we achive 435 line\n");
         for (i = 0; i < bufferSize; i++) {
             // Check if current page frame is in use (i.e., not -1)
             if (pageFrame[i].pageNum != -1) {

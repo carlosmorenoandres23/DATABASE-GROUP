@@ -78,10 +78,11 @@ main (void)
 	testName = "";
     testGetRecordSize(); //this is an extra test
 	
-	testInsertManyRecords();
-	/*
+	//testInsertManyRecords();
+	
 	testRecords();
 	testCreateTableAndInsert();
+	/*
 	testUpdateTable();
 	testScans();
 	testScansTwo();
@@ -155,18 +156,20 @@ testCreateTableAndInsert (void)
 	TEST_CHECK(initRecordManager(NULL));
 	TEST_CHECK(createTable("test_table_r",schema));
 	TEST_CHECK(openTable(table, "test_table_r"));
-    printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
+   
 	// insert rows into table
 	for(i = 0; i < numInserts; i++)
 	{
 		r = fromTestRecord(schema, inserts[i]);
-		//TEST_CHECK(insertRecord(table,r));
+		TEST_CHECK(insertRecord(table,r));
 		rids[i] = r->id;
 	}
-	 printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
+	
+	
 	TEST_CHECK(closeTable(table));
-	TEST_CHECK(openTable(table, "test_table_r"));
-
+	
+	TEST_CHECK(openTable(table, "test_table_r"));  //the current problem is here
+	 
 	// randomly retrieve records from the table and compare to inserted ones
 	for(i = 0; i < 1000; i++)
 	{
@@ -175,9 +178,11 @@ testCreateTableAndInsert (void)
 		TEST_CHECK(getRecord(table, rid, r));
 		ASSERT_EQUALS_RECORDS(fromTestRecord(schema, inserts[pos]), r, schema, "compare records");
 	}
-
+ printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
 	TEST_CHECK(closeTable(table));
+	 printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
 	TEST_CHECK(deleteTable("test_table_r"));
+	 printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
 	TEST_CHECK(shutdownRecordManager());
 
 	free(rids);
@@ -376,6 +381,7 @@ testInsertManyRecords(void)
 	Schema *schema;
 	testName = "test creating a new table and inserting 10000 records then updating record from rids[3333]";
 	schema = testSchema();
+	
 	rids = (RID *) malloc(sizeof(RID) * numInserts);
 
 	TEST_CHECK(initRecordManager(NULL));
@@ -384,21 +390,26 @@ testInsertManyRecords(void)
 	
 	TEST_CHECK(openTable(table, "test_table_t"));
 	
-  printf("llegamos 384");
+
 	// insert rows into table
 	for(i = 0; i < numInserts; i++)
 	{
 		realInserts[i] = inserts[i%10];
 		realInserts[i].a = i;
 		r = fromTestRecord(schema, realInserts[i]);
-		 
+		printf("achive line 394\n");
 		//TEST_CHECK(insertRecord(table,r));
-		rids[i] = r->id;
-	}
+		printf("achive line 396\n");
+		rids[i] = r->id; 
+	} 
+	
+	 /*
+	printf("llegamos 399\n");
+	
 	printf("llegamos");
 	TEST_CHECK(closeTable(table));
 	TEST_CHECK(openTable(table, "test_table_t"));
- /*
+ 
 	// retrieve records from the table and compare to expected final stage
 	for(i = 0; i < numInserts; i++)
 	{
@@ -419,7 +430,7 @@ testInsertManyRecords(void)
 	TEST_CHECK(shutdownRecordManager());
 	freeSchema(schema); // this is not in the original test, maybe we should include in close table but not sure how
 	free(rids); // this is not in the original test, maybe we should include in close table but not sure how
-	freeRecord(r);
+	//freeRecord(r);
 	free(table);
 	TEST_DONE();
 }
@@ -721,8 +732,7 @@ void printRecord(Schema *schema, Record *record) {
     }
 }
 
-// Prototipo de la función testSchema
-extern Schema *testSchema(void);
+
 
 // Function to test getRecordSize
 void testGetRecordSize(void) {
