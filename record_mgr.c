@@ -207,9 +207,11 @@ extern RC openTable (RM_TableData *rel, char *name)
 extern RC closeTable (RM_TableData *rel)
 {
 	// Storing the Table's meta data
-	RecordManager *recordManager = rel->mgmtData;
+	//RecordManager *recordManager = rel->mgmtData;
 	// Shutting down Buffer Pool	
-	shutdownBufferPool(&recordManager->bufferPool);
+   
+	//shutdownBufferPool(&recordManager->bufferPool);
+   
 	//rel->mgmtData = NULL;
 	return RC_OK;
 }
