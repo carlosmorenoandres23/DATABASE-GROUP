@@ -14,6 +14,14 @@ typedef struct PageFrame {
     int refNum;         // Used by LFU for least frequently used page
 } PageFrame;
 
+
+// "rearIndex" basically stores the count of number of pages read from the disk.
+// "rearIndex" is also used by FIFO function to calculate the frontIndex i.e.
+int rearIndex = 0;
+
+// "writeCount" counts the number of I/O write to the disk i.e. number of pages writen to the disk
+int writeCount = 0;
+
 // Global variables related to buffer pool management
 int bufferSize = 0;           // Size of the buffer pool
 int numPagesReadCount = 0;    // Count of pages read from disk
@@ -59,7 +67,6 @@ bool setNewPageToPageFrame(PageFrame *pageFrame, PageFrame *page, int pageFrameI
     return true; // Confirm successful execution of the function
 }
 
- 
 void FIFO(BM_BufferPool *const bm, PageFrame *page) {
     PageFrame *pageFrame = (PageFrame *)bm->mgmtData;
     int currentIndex = numPagesReadCount % bufferSize; // Calculate the current index based on the number of pages read
@@ -85,9 +92,6 @@ void FIFO(BM_BufferPool *const bm, PageFrame *page) {
         currentIndex = (currentIndex + 1) % bufferSize;
     }
 }
-
-
-
 
 // Implementation of Least Frequently Used (LFU) page replacement algorithm
 void LFU(BM_BufferPool *const bm, PageFrame *page) {
@@ -116,6 +120,7 @@ void LFU(BM_BufferPool *const bm, PageFrame *page) {
     setNewPageToPageFrame(pageFrame, page, leastFreqIndex); // Set new page to the least frequently used page frame
     lfuPointer = (leastFreqIndex + 1) % bufferSize; // Update the LFU pointer for next use
 }
+
 
 // Implementation of Least Recently Used (LRU) page replacement algorithm
 void LRU(BM_BufferPool *const bm, PageFrame *page) {
@@ -218,50 +223,29 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
     return RC_OK;
 }
 
+
 // Shutdown i.e. close the buffer pool, thereby removing all the pages from the memory and freeing up all resources and releasing some memory space.
-RC shutdownBufferPool(BM_BufferPool *const bm) {
-    
-    // Check if buffer pool is initialized
-    if (bm == NULL || bm->mgmtData == NULL) {
-        return RC_ERROR;
-    }
+extern RC shutdownBufferPool(BM_BufferPool *const bm)
+{
+	PageFrame *pageFrame = (PageFrame *)bm->mgmtData;
+	// Write all dirty pages (modified pages) back to disk
+	forceFlushPool(bm);
 
-    PageFrame *pageFrame = (PageFrame *)bm->mgmtData;
-    // Write all dirty pages (modified pages) back to disk
-    RC status = forceFlushPool(bm);
+	int i;	
+	for(i = 0; i < bufferSize; i++)
+	{
+		// If fixCount != 0, it means that the contents of the page was modified by some client and has not been written back to disk.
+		if(pageFrame[i].fixCount != 0)
+		{
+			return RC_ERROR;
+		}
+	}
 
-    // Handle potential errors during flushing
-    if(status != RC_OK) {
-        free(pageFrame);
-        free(newPage);
-        bm->mgmtData = NULL;
-        // If flushing fails, return the error status
-        return status;
-    }
-
-    int i = 0 ;
-    // Free allocated memory for each page frame
-    while (i < bufferSize){
-        // Free the data for each page before freeing the pageFrame itself
-        if (pageFrame[i].data != NULL) {
-            free(pageFrame[i].data);
-            pageFrame[i].data = NULL; // To avoid dangling pointer
-        }
-         i++;
-    }
-
-    // Releasing space occupied by the pageFrame
-    free(pageFrame);
-     // Luego liberamos la estructura de la página en sí
-    free(newPage);
-    newPage = NULL; // Evitamos un puntero colgante
-
-
-	//free(page);
-    bm->mgmtData = NULL; // To avoid dangling pointer
-    return RC_OK;
+	// Releasing space occupied by the page
+	free(pageFrame);
+	bm->mgmtData = NULL;
+	return RC_OK;
 }
-
 
 // Force flush all dirty pages in the buffer pool to disk
 RC forceFlushPool(BM_BufferPool *const bm)
@@ -329,9 +313,6 @@ RC markDirty(BM_BufferPool *const bm, BM_PageHandle *const page) {
     return RC_ERROR; // Error code for page not found in buffer
 }
 
-
-
-
 // Unpins a page from the buffer pool
 RC unpinPage(BM_BufferPool *const bm, BM_PageHandle *const page) {
     // Validate the input parameters
@@ -356,7 +337,6 @@ RC unpinPage(BM_BufferPool *const bm, BM_PageHandle *const page) {
      // Return appropriate status based on whether the page was found
     return pageFound ? RC_OK : RC_ERROR; // Return RC_PAGE_NOT_FOUND if page is not found in the buffer
 }
-
 
 // Writes the contents of a specified modified page back to the disk
 RC forcePage(BM_BufferPool *const bm, BM_PageHandle *const page) {
@@ -411,7 +391,6 @@ RC pinPage(BM_BufferPool *const bm, BM_PageHandle *const page, const PageNumber 
     if (pageFrame[0].pageNum == -1) {
         // Check if buffer pool is empty and this is the first page to be pinned
         // Read page from disk and initialize page frame's content in the buffer pool
-         printf("we achive 413 line\n");
         SM_FileHandle fh;
         openPageFile(bm->pageFile, &fh); // Open the page file corresponding to the buffer pool
 
@@ -433,7 +412,6 @@ RC pinPage(BM_BufferPool *const bm, BM_PageHandle *const page, const PageNumber 
         // Buffer pool has at least one page
         bool isBufferFull = true;
         int i;
-          printf("we achive 435 line\n");
         for (i = 0; i < bufferSize; i++) {
             // Check if current page frame is in use (i.e., not -1)
             if (pageFrame[i].pageNum != -1) {
@@ -553,10 +531,6 @@ RC pinPage(BM_BufferPool *const bm, BM_PageHandle *const page, const PageNumber 
     }
 }
 
-
-
-
-
 // STATISTICS FUNCTIONS //
 
 
@@ -600,8 +574,6 @@ bool *getDirtyFlags(BM_BufferPool *const bm) {
     return dirtyFlags;// Return the array of dirty flags
 }
 
-
-
 // This function returns an array of ints (of size numPages) where the ith element is the fix count of the page stored in the ith page frame.
 int *getFixCounts(BM_BufferPool *const bm) {
     // Check if buffer pool or its management data is initialized
@@ -620,7 +592,6 @@ int *getFixCounts(BM_BufferPool *const bm) {
 
     return fixCounts;// Return the array of fix counts
 }
-
 
 
 // Returns the total number of page read operations from disk for the specified buffer pool.
@@ -643,4 +614,3 @@ int getNumWriteIO(BM_BufferPool *const bm)
 	 // Directly returning the count of pages written to disk.
 	return totalDiskWriteCount;
 }
-

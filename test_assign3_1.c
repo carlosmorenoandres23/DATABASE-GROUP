@@ -76,18 +76,15 @@ int
 main (void) 
 {
 	testName = "";
-    testGetRecordSize(); //this is an extra test
-	
-	//testInsertManyRecords();
-	
+
+	testInsertManyRecords();
 	testRecords();
 	testCreateTableAndInsert();
-	/*
 	testUpdateTable();
 	testScans();
 	testScansTwo();
 	testMultipleScans();
-    */
+
 	return 0;
 }
 
@@ -156,7 +153,7 @@ testCreateTableAndInsert (void)
 	TEST_CHECK(initRecordManager(NULL));
 	TEST_CHECK(createTable("test_table_r",schema));
 	TEST_CHECK(openTable(table, "test_table_r"));
-   
+
 	// insert rows into table
 	for(i = 0; i < numInserts; i++)
 	{
@@ -164,12 +161,10 @@ testCreateTableAndInsert (void)
 		TEST_CHECK(insertRecord(table,r));
 		rids[i] = r->id;
 	}
-	
-	
+
 	TEST_CHECK(closeTable(table));
-	
-	TEST_CHECK(openTable(table, "test_table_r"));  //the current problem is here
-	 
+	TEST_CHECK(openTable(table, "test_table_r"));
+
 	// randomly retrieve records from the table and compare to inserted ones
 	for(i = 0; i < 1000; i++)
 	{
@@ -178,11 +173,9 @@ testCreateTableAndInsert (void)
 		TEST_CHECK(getRecord(table, rid, r));
 		ASSERT_EQUALS_RECORDS(fromTestRecord(schema, inserts[pos]), r, schema, "compare records");
 	}
- printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
+
 	TEST_CHECK(closeTable(table));
-	 printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
 	TEST_CHECK(deleteTable("test_table_r"));
-	 printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
 	TEST_CHECK(shutdownRecordManager());
 
 	free(rids);
@@ -221,7 +214,7 @@ testMultipleScans(void)
 	TEST_CHECK(initRecordManager(NULL));
 	TEST_CHECK(createTable("test_table_r",schema));
 	TEST_CHECK(openTable(table, "test_table_r"));
-    printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
+
 	// insert rows into table
 	for(i = 0; i < numInserts; i++)
 	{
@@ -381,15 +374,11 @@ testInsertManyRecords(void)
 	Schema *schema;
 	testName = "test creating a new table and inserting 10000 records then updating record from rids[3333]";
 	schema = testSchema();
-	
 	rids = (RID *) malloc(sizeof(RID) * numInserts);
 
 	TEST_CHECK(initRecordManager(NULL));
-	  
 	TEST_CHECK(createTable("test_table_t",schema));
-	
 	TEST_CHECK(openTable(table, "test_table_t"));
-	
 
 	// insert rows into table
 	for(i = 0; i < numInserts; i++)
@@ -397,19 +386,12 @@ testInsertManyRecords(void)
 		realInserts[i] = inserts[i%10];
 		realInserts[i].a = i;
 		r = fromTestRecord(schema, realInserts[i]);
-		printf("achive line 394\n");
-		//TEST_CHECK(insertRecord(table,r));
-		printf("achive line 396\n");
-		rids[i] = r->id; 
-	} 
-	
-	 /*
-	printf("llegamos 399\n");
-	
-	printf("llegamos");
+		TEST_CHECK(insertRecord(table,r));
+		rids[i] = r->id;
+	}
 	TEST_CHECK(closeTable(table));
 	TEST_CHECK(openTable(table, "test_table_t"));
- 
+
 	// retrieve records from the table and compare to expected final stage
 	for(i = 0; i < numInserts; i++)
 	{
@@ -423,14 +405,12 @@ testInsertManyRecords(void)
 	TEST_CHECK(updateRecord(table,r));
 	TEST_CHECK(getRecord(table, rids[randomRec], r));
 	ASSERT_EQUALS_RECORDS(fromTestRecord(schema, updates[0]), r, schema, "compare records");
-     */ 
+
 	TEST_CHECK(closeTable(table));
-	
 	TEST_CHECK(deleteTable("test_table_t"));
 	TEST_CHECK(shutdownRecordManager());
-	freeSchema(schema); // this is not in the original test, maybe we should include in close table but not sure how
-	free(rids); // this is not in the original test, maybe we should include in close table but not sure how
-	//freeRecord(r);
+
+	freeRecord(r);
 	free(table);
 	TEST_DONE();
 }
@@ -507,7 +487,6 @@ void testScans (void)
 
 	// clean up
 	TEST_CHECK(closeTable(table));
-	
 	TEST_CHECK(deleteTable("test_table_r"));
 	TEST_CHECK(shutdownRecordManager());
 
@@ -692,67 +671,4 @@ testRecord(Schema *schema, int a, char *b, int c)
 	freeVal(value);
 
 	return result;
-}
-
-void printRecord(Schema *schema, Record *record);
-void printRecord(Schema *schema, Record *record) {
-    if (record == NULL || schema == NULL) {
-        printf("Record or Schema is NULL\n");
-        return;
-    }
-
-    Value *value;
-    int i;
-
-    // Recorre cada atributo del esquema
-    for (i = 0; i < schema->numAttr; i++) {
-        // Obtén el valor del atributo
-        getAttr(record, schema, i, &value);
-
-        // Imprime según el tipo de dato
-        switch (schema->dataTypes[i]) {
-            case DT_INT:
-                printf("Atributo %d (INT): %d\n", i, value->v.intV);
-                break;
-            case DT_STRING:
-                printf("Atributo %d (STRING): %s\n", i, value->v.stringV);
-                break;
-            case DT_FLOAT:
-                printf("Atributo %d (FLOAT): %f\n", i, value->v.floatV);
-                break;
-            case DT_BOOL:
-                printf("Atributo %d (BOOL): %s\n", i, (value->v.boolV ? "true" : "false"));
-                break;
-            default:
-                printf("Atributo %d: Tipo desconocido\n", i);
-                break;
-        }
-
-        freeVal(value);
-    }
-}
-
-
-
-// Function to test getRecordSize
-void testGetRecordSize(void) {
-    // Obtain the schema using testSchema
-    Schema *schema = testSchema();
-
-    // Calculate the record size
-    int recordSize = getRecordSize(schema);
-    printf("Calculated record size is: %d\n", recordSize);
-
-    // Expected size of the record
-    int expectedSize = 13;
-
-    // Check if the calculated size is as expected
-    if(recordSize == expectedSize) {
-        printf("Test successful: The record size is correct.\n");
-    } else {
-        printf("Test failed: Expected size was %d, but got %d.\n", expectedSize, recordSize);
-    }
-
-    // Free memory
-    freeSchema(schema);
 }
