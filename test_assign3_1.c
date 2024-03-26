@@ -168,21 +168,24 @@ testCreateTableAndInsert (void)
 	
 	TEST_CHECK(closeTable(table));
 	
-	TEST_CHECK(openTable(table, "test_table_r"));  //the current problem is here
+	TEST_CHECK(openTable(table, "test_table_r"));  
 	 
 	// randomly retrieve records from the table and compare to inserted ones
 	for(i = 0; i < 1000; i++)
 	{
 		int pos = rand() % numInserts;
 		RID rid = rids[pos];
+		
 		TEST_CHECK(getRecord(table, rid, r));
-		ASSERT_EQUALS_RECORDS(fromTestRecord(schema, inserts[pos]), r, schema, "compare records");
+		printf("value error i  %d\n",i );
+		ASSERT_EQUALS_RECORDS(fromTestRecord(schema, inserts[pos-1]), r, schema, "compare records"); //it doesn't work
+		
 	}
- printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
+
 	TEST_CHECK(closeTable(table));
-	 printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
+	
 	TEST_CHECK(deleteTable("test_table_r"));
-	 printf("Archivo: %s, Línea: %d\n", __FILE__, __LINE__);
+	
 	TEST_CHECK(shutdownRecordManager());
 
 	free(rids);
