@@ -49,18 +49,27 @@ int findFreeSlot(char *data, int recordSize)
 // Database Management Functions
 RC initRecordManager(void *mgmtData) {
 
+    //init the StorageManager
     initStorageManager();
-    printf("Record Manager and Storage manager init sucessfully\n");
+
+    printf(" The Record Manager is initalizated sucessfully\n");
     
     return RC_OK;
 }
 
 // This functions shuts down the Record Manager
 extern RC shutdownRecordManager ()
-{
-	recordManager = NULL;
-	free(recordManager);
-	return RC_OK;
+{   
+    // Check if the recordManager is not NULL before attempting to free it
+    if (recordManager != NULL)
+    {
+        // Free the allocated memory for recordManager
+        free(recordManager);
+
+        // Set the pointer to NULL to avoid dangling pointer issues
+        recordManager = NULL;
+    }
+    return RC_OK;
 }
 
 extern RC createTable(char *name, Schema *schema) {

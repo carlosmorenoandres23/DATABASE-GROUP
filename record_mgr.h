@@ -13,9 +13,9 @@ typedef struct RM_ScanHandle
 } RM_ScanHandle;
 
 // table and manager
-extern RC initRecordManager (void *mgmtData);
-extern RC shutdownRecordManager ();
-extern RC createTable (char *name, Schema *schema);
+extern RC initRecordManager (void *mgmtData); //it is made
+extern RC shutdownRecordManager (); //it is made 
+extern RC createTable (char *name, Schema *schema); //it is made 
 extern RC openTable (RM_TableData *rel, char *name);
 extern RC closeTable (RM_TableData *rel);
 extern RC deleteTable (char *name);
@@ -34,7 +34,7 @@ extern RC closeScan (RM_ScanHandle *scan);
 
 // dealing with schemas
 extern int getRecordSize (Schema *schema);
-extern Schema *createSchema (int numAttr, char **attrNames, DataType *dataTypes, int *typeLength, int keySize, int *keys);
+extern Schema *createSchema (int numAttr, char **attrNames, DataType *dataTypes, int *typeLength, int keySize, int *keys); //it is made 
 extern RC freeSchema (Schema *schema);
 
 // dealing with records and attribute values
