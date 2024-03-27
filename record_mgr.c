@@ -131,6 +131,9 @@ extern RC createTable(char *name, Schema *schema) {
     return RC_OK;
 }
 
+
+
+
 // This function opens the table with table name "name"
 extern RC openTable (RM_TableData *rel, char *name)
 {
