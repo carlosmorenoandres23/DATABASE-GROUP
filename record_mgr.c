@@ -687,35 +687,49 @@ extern RC freeSchema (Schema *schema){
 
 // ******** DEALING WITH RECORDS AND ATTRIBUTE VALUES ******** //
 
-// This function creates a new record in the schema referenced by "schema"
+
+// Initializes and allocates memory for a new record based on the given schema.
 extern RC createRecord (Record **record, Schema *schema)
 {
-	// Allocate some memory space for the new record
-	Record *newRecord = (Record*) malloc(sizeof(Record));
-	
-	// Retrieve the record size
-	int recordSize = getRecordSize(schema);
+    // Validate the input schema to ensure it's not null.
+    if (schema == NULL) {
+        return RC_ERROR;
+    }
 
-	// Allocate some memory space for the data of new record    
-	newRecord->data= (char*) malloc(recordSize);
+    // Allocate memory for the record structure.
+    Record *newRecord = (Record *) malloc(sizeof(Record));
+    if (newRecord == NULL) {
+        // Memory allocation failed. Return an error code accordingly.
+        return RC_ERROR;
+    }
 
-	// Setting page and slot position. -1 because this is a new record and we don't know anything about the position
-	newRecord->id.page = newRecord->id.slot = -1;
+    // Determine the size required for the record's data based on the schema.
+    int sizeRequiredForData = getRecordSize(schema);
 
-	// Getting the starting position in memory of the record's data
-	char *dataPointer = newRecord->data;
-	
-	// '-' is used for Tombstone mechanism. We set it to '-' because the record is empty.
-	*dataPointer = '-';
-	
-	// Append '\0' which means NULL in C to the record after tombstone. ++ because we need to move the position by one before adding NULL
-	*(++dataPointer) = '\0';
+    // Allocate memory for the record's data.
+    newRecord->data = (char *) malloc(sizeRequiredForData);
+    if (newRecord->data == NULL) {
+        // In case of allocation failure for data, clean up already allocated record memory.
+        free(newRecord);
+        return RC_ERROR;
+    }
 
-	// Set the newly created record to 'record' which passed as argument
-	*record = newRecord;
+    // Initialize the record ID to -1 indicating it's new and not yet stored in any page or slot.
+    newRecord->id.page = -1;
+    newRecord->id.slot = -1;
 
-	return RC_OK;
+    // Set up the record's data starting with a tombstone marker followed by a null character.
+    newRecord->data[0] = '-'; // Tombstone marker to indicate the record status.
+    newRecord->data[1] = '\0'; // Null character to end the string.
+
+    // Assign the newly created record to the output parameter.
+    *record = newRecord;
+
+    // Return RC_OK to indicate successful record creation.
+    return RC_OK;
 }
+
+
 
 // This function sets the offset (in bytes) from initial position to the specified attribute of the record into the 'result' parameter passed through the function
 RC attrOffset (Schema *schema, int attrNum, int *result)
