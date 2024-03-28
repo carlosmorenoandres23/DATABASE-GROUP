@@ -30,7 +30,7 @@ extern RC getRecord (RM_TableData *rel, RID id, Record *record);
 // scans
 extern RC startScan (RM_TableData *rel, RM_ScanHandle *scan, Expr *cond);
 extern RC next (RM_ScanHandle *scan, Record *record);
-extern RC closeScan (RM_ScanHandle *scan);
+extern RC closeScan (RM_ScanHandle *scan); //it is made
 
 // dealing with schemas
 extern int getRecordSize (Schema *schema);

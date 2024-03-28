@@ -231,7 +231,7 @@ extern int getNumTuples (RM_TableData *rel)
 {
 	    if (rel == NULL) {
         // Handle the error, e.g., return an error code or log an error
-        return RC_ERROR; // Assuming -1 as an error indicator
+        return RC_ERROR; 
     }
 	// Accessing our data structure's tuplesCount and returning it
 	RecordManager *recordManager = rel->mgmtData;
@@ -574,7 +574,7 @@ extern RC next (RM_ScanHandle *scan, Record *record)
 	// None of the tuple satisfy the condition and there are no more tuples to scan
 	return RC_RM_NO_MORE_TUPLES;
 }
-
+/*
 // This function closes the scan operation.
 extern RC closeScan (RM_ScanHandle *scan)
 {
@@ -599,7 +599,43 @@ extern RC closeScan (RM_ScanHandle *scan)
 	
 	return RC_OK;
 }
+*/
+// Safely terminates the scan process.
+extern RC closeScan(RM_ScanHandle *scan) {
+    // Ensure scan handle is not null before proceeding.
+    if (scan == NULL) {
+        // Log error or handle it appropriately.
+        return RC_ERROR;
+    }
 
+    // Acquire management data for the scan and its associated record.
+    RecordManager *scanManager = scan->mgmtData;
+    RecordManager *recordManager = (scan->rel) ? scan->rel->mgmtData : NULL;
+
+    // Validate both management data pointers.
+    if (scanManager == NULL || recordManager == NULL) {
+        // Log error or handle it accordingly.
+        return RC_ERROR; 
+    }
+
+    // Perform cleanup if a scan operation is in progress.
+    if (scanManager->scanCount > 0) {
+        // Release the pinned page from the buffer pool.
+        unpinPage(&recordManager->bufferPool, &scanManager->pageHandle);
+
+        // Reset scan parameters to initial values.
+        scanManager->scanCount = 0;
+        scanManager->recordID.page = 1;
+        scanManager->recordID.slot = 0;
+    }
+
+    // Clear and free the scan management data.
+    scan->mgmtData = NULL;
+    free(scanManager);
+
+    // Return success code.
+    return RC_OK;
+}
 
 // ******** SCHEMA FUNCTIONS ******** //
 
