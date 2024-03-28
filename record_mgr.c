@@ -673,8 +673,12 @@ extern Schema *createSchema (int numAttr, char **attrNames, DataType *dataTypes,
 }
 
 // This function removes a schema from memory and de-allocates all the memory space allocated to the schema.
-extern RC freeSchema (Schema *schema)
-{
+extern RC freeSchema (Schema *schema){
+    if (schema == NULL){
+        // Return a specific error code or handle the null pointer scenario as needed.
+        return RC_ERROR;
+    }
+
 	// De-allocating memory space occupied by 'schema'
 	free(schema);
 	return RC_OK;
