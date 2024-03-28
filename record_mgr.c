@@ -422,49 +422,53 @@ extern RC getRecord (RM_TableData *rel, RID id, Record *record)
 // ******** SCAN FUNCTIONS ******** //
 
 // This function scans all the records using the condition
+
+
+// Initializes a scan operation on a table with a given condition.
 extern RC startScan (RM_TableData *rel, RM_ScanHandle *scan, Expr *cond)
 {
-	// Checking if scan condition (test expression) is present
-	if (cond == NULL)
-	{
+	// Validate input parameters to prevent dereferencing null pointers
+	if (rel == NULL || scan == NULL) {
 		return RC_ERROR;
 	}
 
-	// Open the table in memory
-	openTable(rel, "ScanTable");
+	// Ensure the condition for scanning is provided
+	if (cond == NULL) {
+		return RC_ERROR;
+	}
 
-    	RecordManager *scanManager;
-	RecordManager *tableManager;
+	// Attempt to open the table for scanning
+	if (openTable(rel, "ScanTable") != RC_OK) {
+		return RC_ERROR;
+	}
 
-	// Allocating some memory to the scanManager
-    	scanManager = (RecordManager*) malloc(sizeof(RecordManager));
-    	
-	// Setting the scan's meta data to our meta data
-    	scan->mgmtData = scanManager;
-    	
-	// 1 to start scan from the first page
-    	scanManager->recordID.page = 1;
-    	
-	// 0 to start scan from the first slot	
-	scanManager->recordID.slot = 0;
-	
-	// 0 because this just initializing the scan. No records have been scanned yet    	
-	scanManager->scanCount = 0;
+	// Allocate memory for the scan manager
+	RecordManager *scanManager = (RecordManager*) malloc(sizeof(RecordManager));
+	if (scanManager == NULL) {
+		return RC_ERROR;
+	}
 
-	// Setting the scan condition
-    	scanManager->condition = cond;
-    	
-	// Setting the our meta data to the table's meta data
-    	tableManager = rel->mgmtData;
+	// Initialize the scan manager's metadata
+	scan->mgmtData = scanManager;
+	scanManager->recordID.page = 1; // Start from the first page
+	scanManager->recordID.slot = 0; // Start from the first slot
+	scanManager->scanCount = 0; // No records scanned at initialization
+	scanManager->condition = cond; // Set the scan condition
 
-	// Setting the tuple count
-    	tableManager->tuplesCount = ATTRIBUTE_SIZE;
+	// Link the scan manager to the table's management data
+	RecordManager *tableManager = rel->mgmtData;
+	if (tableManager == NULL) {
+		free(scanManager); // Cleanup allocated memory
+		return RC_ERROR;
+	}
 
-	// Setting the scan's table i.e. the table which has to be scanned using the specified condition
-    	scan->rel= rel;
+	// Initialize table-specific metadata
+	tableManager->tuplesCount = ATTRIBUTE_SIZE;
+	scan->rel = rel; // Set the scan's target table
 
 	return RC_OK;
 }
+
 
 // This function scans each record in the table and stores the result record (record satisfying the condition)
 // in the location pointed by  'record'.
@@ -574,32 +578,7 @@ extern RC next (RM_ScanHandle *scan, Record *record)
 	// None of the tuple satisfy the condition and there are no more tuples to scan
 	return RC_RM_NO_MORE_TUPLES;
 }
-/*
-// This function closes the scan operation.
-extern RC closeScan (RM_ScanHandle *scan)
-{
-	RecordManager *scanManager = scan->mgmtData;
-	RecordManager *recordManager = scan->rel->mgmtData;
 
-	// Check if scan was incomplete
-	if(scanManager->scanCount > 0)
-	{
-		// Unpin the page i.e. remove it from the buffer pool.
-		unpinPage(&recordManager->bufferPool, &scanManager->pageHandle);
-		
-		// Reset the Scan Manager's values
-		scanManager->scanCount = 0;
-		scanManager->recordID.page = 1;
-		scanManager->recordID.slot = 0;
-	}
-	
-	// De-allocate all the memory space allocated to the scans's meta data (our custom structure)
-    	scan->mgmtData = NULL;
-    	free(scan->mgmtData);  
-	
-	return RC_OK;
-}
-*/
 // Safely terminates the scan process.
 extern RC closeScan(RM_ScanHandle *scan) {
     // Ensure scan handle is not null before proceeding.
