@@ -229,10 +229,15 @@ extern RC deleteTable (char *name)
 // This function returns the number of tuples (records) in the table referenced by "rel"
 extern int getNumTuples (RM_TableData *rel)
 {
+	    if (rel == NULL) {
+        // Handle the error, e.g., return an error code or log an error
+        return RC_ERROR; // Assuming -1 as an error indicator
+    }
 	// Accessing our data structure's tuplesCount and returning it
 	RecordManager *recordManager = rel->mgmtData;
 	return recordManager->tuplesCount;
 }
+
 
 
 // ******** RECORD FUNCTIONS ******** //
