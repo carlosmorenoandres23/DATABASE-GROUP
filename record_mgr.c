@@ -312,37 +312,50 @@ extern RC insertRecord (RM_TableData *rel, Record *record)
 	return RC_OK;
 }
 
-// This function deletes a record having Record ID "id" in the table referenced by "rel"
 extern RC deleteRecord (RM_TableData *rel, RID id)
 {
-	// Retrieving our meta data stored in the table
-	RecordManager *recordManager = rel->mgmtData;
-	
-	// Pinning the page which has the record which we want to update
-	pinPage(&recordManager->bufferPool, &recordManager->pageHandle, id.page);
+    // Validate the input table data to ensure it's not null and contains valid metadata.
+    if (rel == NULL || rel->mgmtData == NULL) {
+        return RC_ERROR;
+    }
 
-	// Update free page because this page 
-	recordManager->freePage = id.page;
-	
-	char *data = recordManager->pageHandle.data;
+    // Retrieve the record manager from the table's metadata.
+    RecordManager *recordManager = rel->mgmtData;
 
-	// Getting the size of the record
-	int recordSize = getRecordSize(rel->schema);
+    // Pin the page containing the record to be deleted.
+    RC pinStatus = pinPage(&recordManager->bufferPool, &recordManager->pageHandle, id.page);
+    if (pinStatus != RC_OK) {
+        return pinStatus; // Return the error if the pin operation fails.
+    }
 
-	// Setting data pointer to the specific slot of the record
-	data = data + (id.slot * recordSize);
-	
-	// '-' is used for Tombstone mechanism. It denotes that the record is deleted
-	*data = '-';
-		
-	// Mark the page dirty because it has been modified
-	markDirty(&recordManager->bufferPool, &recordManager->pageHandle);
+    // Mark the page as a candidate for storing new records, updating the free page tracker.
+    recordManager->freePage = id.page;
 
-	// Unpin the page after the record is retrieved since the page is no longer required to be in memory
-	unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
+    // Calculate the starting position of the record in the page buffer.
+    int recordSize = getRecordSize(rel->schema);
+    char *targetRecordLocation = recordManager->pageHandle.data + (id.slot * recordSize);
 
-	return RC_OK;
+    // Use the tombstone mechanism to mark the record as deleted.
+    *targetRecordLocation = '-';
+
+    // Mark the page as dirty to indicate that its contents have been modified.
+    RC markDirtyStatus = markDirty(&recordManager->bufferPool, &recordManager->pageHandle);
+    if (markDirtyStatus != RC_OK) {
+        unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
+        return markDirtyStatus;
+    }
+
+    // Unpin the page as the deletion process is complete.
+    RC unpinStatus = unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
+    if (unpinStatus != RC_OK) {
+        return unpinStatus;
+    }
+
+    return RC_OK; // Return success after successful deletion.
 }
+
+
+
 
 extern RC updateRecord (RM_TableData *rel, Record *record){
     // Validate the input parameters to ensure they are not null.
