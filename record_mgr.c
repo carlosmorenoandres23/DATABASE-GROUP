@@ -764,7 +764,7 @@ RC attrOffset (Schema *schema, int attrNum, int *result)
 	}
 	return RC_OK;
 }
-
+/*
 // This function removes the record from the memory.
 extern RC freeRecord (Record *record)
 {
@@ -772,6 +772,22 @@ extern RC freeRecord (Record *record)
 	free(record);
 	return RC_OK;
 }
+*/
+// Safely deallocates the memory allocated for a record.
+extern RC freeRecord (Record *record)
+{
+    // Check if the record pointer is valid. This is crucial to prevent freeing a null pointer.
+    if (record == NULL) {
+        // If the record is null, there's nothing to free. An error code is returned
+        return RC_ERROR; 
+    }
+    // Free the memory occupied by the record.
+    free(record);
+
+    // Return RC_OK to indicate successful deallocation.
+    return RC_OK;
+}
+
 
 // This function retrieves an attribute from the given record in the specified schema
 extern RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)

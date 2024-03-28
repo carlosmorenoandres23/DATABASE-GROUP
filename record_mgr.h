@@ -39,7 +39,7 @@ extern RC freeSchema (Schema *schema); //it is made
 
 // dealing with records and attribute values
 extern RC createRecord (Record **record, Schema *schema); //it is made
-extern RC freeRecord (Record *record);
+extern RC freeRecord (Record *record);// it is made 
 extern RC getAttr (Record *record, Schema *schema, int attrNum, Value **value);
 extern RC setAttr (Record *record, Schema *schema, int attrNum, Value *value);
 
