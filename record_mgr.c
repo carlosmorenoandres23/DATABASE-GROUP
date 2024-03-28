@@ -344,41 +344,49 @@ extern RC deleteRecord (RM_TableData *rel, RID id)
 	return RC_OK;
 }
 
-// This function updates a record referenced by "record" in the table referenced by "rel"
-extern RC updateRecord (RM_TableData *rel, Record *record)
-{	
-	// Retrieving our meta data stored in the table
-	RecordManager *recordManager = rel->mgmtData;
-	
-	// Pinning the page which has the record which we want to update
-	pinPage(&recordManager->bufferPool, &recordManager->pageHandle, record->id.page);
+extern RC updateRecord (RM_TableData *rel, Record *record){
+    // Validate the input parameters to ensure they are not null.
+    if (rel == NULL || rel->mgmtData == NULL || record == NULL) {
+        return RC_ERROR;
+    }
 
-	char *data;
+    // Extract the record manager from the table's metadata.
+    RecordManager *recordManager = rel->mgmtData;
 
-	// Getting the size of the record
-	int recordSize = getRecordSize(rel->schema);
+    // Attempt to pin the page containing the record to be updated.
+    RC pinStatus = pinPage(&recordManager->bufferPool, &recordManager->pageHandle, record->id.page);
+    if (pinStatus != RC_OK) {
+        return pinStatus; // Propagate the error from pinPage if it fails.
+    }
 
-	// Set the Record's ID
-	RID id = record->id;
+    // Determine the size of the records according to the schema.
+    int recordSize = getRecordSize(rel->schema);
 
-	// Getting record data's memory location and calculating the start position of the new data
-	data = recordManager->pageHandle.data;
-	data = data + (id.slot * recordSize);
-	
-	// '+' is used for Tombstone mechanism. It denotes that the record is not empty
-	*data = '+';
-	
-	// Copy the new record data to the exisitng record
-	memcpy(++data, record->data + 1, recordSize - 1 );
-	
-	// Mark the page dirty because it has been modified
-	markDirty(&recordManager->bufferPool, &recordManager->pageHandle);
+    // Calculate the location in the page buffer where the record data starts.
+    char *targetRecordLocation = recordManager->pageHandle.data + (record->id.slot * recordSize);
 
-	// Unpin the page after the record is retrieved since the page is no longer required to be in memory
-	unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
-	
-	return RC_OK;	
+    // Mark the record as valid (not empty) using the tombstone mechanism.
+    *targetRecordLocation = '+';
+
+    // Copy the new data into the record's location in the page, skipping the tombstone character.
+    memcpy(targetRecordLocation + 1, record->data + 1, recordSize - 1);
+
+    // Mark the page as dirty because its contents have been modified.
+    RC markDirtyStatus = markDirty(&recordManager->bufferPool, &recordManager->pageHandle);
+    if (markDirtyStatus != RC_OK) {
+        unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
+        return markDirtyStatus; // Return the error if marking the page dirty fails.
+    }
+
+    // Unpin the page as the update is complete and the page is no longer immediately needed.
+    RC unpinStatus = unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
+    if (unpinStatus != RC_OK) {
+        return unpinStatus;
+    }
+
+    return RC_OK; // Return success after a successful update.
 }
+
 
 // This function retrieves a record having Record ID "id" in the table referenced by "rel".
 // The result record is stored in the location referenced by "record"
