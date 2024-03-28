@@ -764,15 +764,7 @@ RC attrOffset (Schema *schema, int attrNum, int *result)
 	}
 	return RC_OK;
 }
-/*
-// This function removes the record from the memory.
-extern RC freeRecord (Record *record)
-{
-	// De-allocating memory space allocated to record and freeing up that space
-	free(record);
-	return RC_OK;
-}
-*/
+
 // Safely deallocates the memory allocated for a record.
 extern RC freeRecord (Record *record)
 {
@@ -865,61 +857,55 @@ extern RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 	return RC_OK;
 }
 
-// This function sets the attribute value in the record in the specified schema
+// Updates the specified attribute in the record according to the given schema.
 extern RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
 {
-	int offset = 0;
+    // Validate input parameters for null pointers.
+    if (record == NULL || schema == NULL || value == NULL) {
+        return RC_ERROR;
+    }
 
-	// Getting the ofset value of attributes depending on the attribute number
-	attrOffset(schema, attrNum, &offset);
+    // Ensure the attribute number is within the valid range.
+    if (attrNum < 0 || attrNum >= schema->numAttr) {
+        return RC_ERROR;
+    }
 
-	// Getting the starting position of record's data in memory
-	char *dataPointer = record->data;
-	
-	// Adding offset to the starting position
-	dataPointer = dataPointer + offset;
-		
-	switch(schema->dataTypes[attrNum])
-	{
-		case DT_STRING:
-		{
-			// Setting attribute value of an attribute of type STRING
-			// Getting the legeth of the string as defined while creating the schema
-			int length = schema->typeLength[attrNum];
+    // Calculate the offset for the attribute in the record.
+    int offset;
+    RC status = attrOffset(schema, attrNum, &offset);
+    if (status != RC_OK) {
+        return status; // Propagate the error from attrOffset.
+    }
 
-			// Copying attribute's value to the location pointed by record's data (dataPointer)
-			strncpy(dataPointer, value->v.stringV, length);
-			dataPointer = dataPointer + schema->typeLength[attrNum];
-		  	break;
-		}
+    // Pointer to the location in the record data where the attribute value should be set.
+    char *dataPointer = record->data + offset;
 
-		case DT_INT:
-		{
-			// Setting attribute value of an attribute of type INTEGER
-			*(int *) dataPointer = value->v.intV;	  
-			dataPointer = dataPointer + sizeof(int);
-		  	break;
-		}
-		
-		case DT_FLOAT:
-		{
-			// Setting attribute value of an attribute of type FLOAT
-			*(float *) dataPointer = value->v.floatV;
-			dataPointer = dataPointer + sizeof(float);
-			break;
-		}
-		
-		case DT_BOOL:
-		{
-			// Setting attribute value of an attribute of type STRING
-			*(bool *) dataPointer = value->v.boolV;
-			dataPointer = dataPointer + sizeof(bool);
-			break;
-		}
+    // Ensure the data type of the value matches the schema.
+    if (schema->dataTypes[attrNum] != value->dt) {
+        return RC_ERROR;
+    }
 
-		default:
-			printf("Serializer not defined for the given datatype. \n");
-			break;
-	}			
-	return RC_OK;
+    // Set the attribute value based on its data type.
+    switch (value->dt) {
+        case DT_STRING: {
+            int length = schema->typeLength[attrNum];
+            strncpy(dataPointer, value->v.stringV, length);
+            break;
+        }
+        case DT_INT: {
+            memcpy(dataPointer, &value->v.intV, sizeof(int));
+            break;
+        }
+        case DT_FLOAT: {
+            memcpy(dataPointer, &value->v.floatV, sizeof(float));
+            break;
+        }
+        case DT_BOOL: {
+            memcpy(dataPointer, &value->v.boolV, sizeof(bool));
+            break;
+        }
+        default:
+            return RC_ERROR; // Or another appropriate error code.
+    }
+    return RC_OK;
 }
