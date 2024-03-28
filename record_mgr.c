@@ -205,16 +205,13 @@ extern RC openTable (RM_TableData *rel, char *name)
 
 	return RC_OK;
 }   
-  
-// This function closes the table referenced by "rel"
+
 extern RC closeTable (RM_TableData *rel)
 {
 	// Storing the Table's meta data
-	RecordManager *recordManager = rel->mgmtData;
-	
 	// Shutting down Buffer Pool	
-	shutdownBufferPool(&recordManager->bufferPool);
-	//rel->mgmtData = NULL;
+	shutdownBufferPool(&((RecordManager*)rel->mgmtData)->bufferPool);
+	rel->mgmtData = NULL;
 	return RC_OK;
 }
 
@@ -238,6 +235,7 @@ extern RC deleteTable (char *name)
 
     return RC_OK; // Return success if the table is successfully deleted.
 }
+
 
 
 // This function returns the number of tuples (records) in the table referenced by "rel"
