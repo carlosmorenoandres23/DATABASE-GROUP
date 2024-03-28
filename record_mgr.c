@@ -218,13 +218,27 @@ extern RC closeTable (RM_TableData *rel)
 	return RC_OK;
 }
 
-// This function deletes the table having table name "name"
+
+// Deletes the table with the specified name from memory.
 extern RC deleteTable (char *name)
 {
-	// Removing the page file from memory using storage manager
-	destroyPageFile(name);
-	return RC_OK;
+    // Validate that the table name is not null.
+    if (name == NULL) {
+        return RC_ERROR;
+    }
+
+    // Attempt to remove the page file associated with the table.
+    RC result = destroyPageFile(name);
+
+    // Check if the destruction of the page file was successful.
+    if (result != RC_OK) {
+        // Handle the error or return an error code if the file deletion fails.
+        return result;
+    }
+
+    return RC_OK; // Return success if the table is successfully deleted.
 }
+
 
 // This function returns the number of tuples (records) in the table referenced by "rel"
 extern int getNumTuples (RM_TableData *rel)
@@ -245,6 +259,11 @@ extern int getNumTuples (RM_TableData *rel)
 // This function inserts a new record in the table referenced by "rel" and updates the 'record' parameter with the Record ID of he newly inserted record
 extern RC insertRecord (RM_TableData *rel, Record *record)
 {
+
+	    // Validate the input parameters for null pointers.
+    if (rel == NULL || rel->mgmtData == NULL || record == NULL) {
+        return RC_ERROR;
+    }
 	// Retrieving our meta data stored in the table
 	RecordManager *recordManager = rel->mgmtData;	
 	
@@ -311,6 +330,9 @@ extern RC insertRecord (RM_TableData *rel, Record *record)
 
 	return RC_OK;
 }
+
+// Inserta un nuevo registro en la tabla y actualiza el parámetro 'record' con el ID del registro insertado.
+
 
 extern RC deleteRecord (RM_TableData *rel, RID id)
 {
