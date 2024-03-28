@@ -384,33 +384,41 @@ extern RC updateRecord (RM_TableData *rel, Record *record)
 // The result record is stored in the location referenced by "record"
 extern RC getRecord (RM_TableData *rel, RID id, Record *record)
 {
+
+	// Validate input parameters to prevent dereferencing null pointers.
+    if (rel == NULL || rel->mgmtData == NULL || record == NULL) {
+        return RC_ERROR;
+    }
 	// Retrieving our meta data stored in the table
 	RecordManager *recordManager = rel->mgmtData;
 	
 	// Pinning the page which has the record we want to retreive
-	pinPage(&recordManager->bufferPool, &recordManager->pageHandle, id.page);
+	// Load the page containing the desired record into the buffer pool.
+    RC pinStatus = pinPage(&recordManager->bufferPool, &recordManager->pageHandle, id.page);
+    if (pinStatus != RC_OK) {
+        return pinStatus; // Return the error from pinPage if it fails.
+    }
 
 	// Getting the size of the record
 	int recordSize = getRecordSize(rel->schema);
-	char *dataPointer = recordManager->pageHandle.data;
-	dataPointer = dataPointer + (id.slot * recordSize);
+	char *dataPointer = recordManager->pageHandle.data + (id.slot * recordSize);
 	
 	if(*dataPointer != '+')
 	{
+		unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
 		// Return error if no matching record for Record ID 'id' is found in the table
 		return RC_ERROR;
 	}
-	else
-	{
-		// Setting the Record ID
-		record->id = id;
+	
+	// Setting the Record ID
+	record->id = id;
 
 		// Setting the pointer to data field of 'record' so that we can copy the data of the record
-		char *data = record->data;
+	char *data = record->data;
 
 		// Copy data using C's function memcpy(...)
-		memcpy(++data, dataPointer + 1, recordSize - 1);
-	}
+	memcpy(++data, dataPointer + 1, recordSize - 1);
+	
 
 	// Unpin the page after the record is retrieved since the page is no longer required to be in memory
 	unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
@@ -616,40 +624,39 @@ extern RC closeScan(RM_ScanHandle *scan) {
 // ******** SCHEMA FUNCTIONS ******** //
 
 // Calcula el tamaño total requerido para un registro basado en su esquema.
-extern int getRecordSize (Schema *schema)
-{
-    // Inicializar el tamaño total a 0.
+extern int getRecordSize (Schema *schema){
+
+  // Initialize the total size to 0.
     int totalSize = 0;
 
-    // Verificar que el puntero del esquema no sea nulo.
+    // Verify that the schema pointer is not null.
     if (schema == NULL) {
-        return -1; // Retornar -1 o un código de error apropiado.
+        return -1; // Return -1 or an appropriate error code.
     }
 
-    // Iterar a través de cada atributo en el esquema.
+    // Iterate through each attribute in the schema.
     for (int i = 0; i < schema->numAttr; i++) {
-        // Determinar el tamaño a agregar según el tipo de dato del atributo.
+        // Determine the size to add based on the data type of the attribute.
         if (schema->dataTypes[i] == DT_STRING) {
-            // Añadir la longitud predefinida para un atributo de tipo cadena.
+            // Add the predefined length for a string attribute.
             totalSize += schema->typeLength[i];
         } else if (schema->dataTypes[i] == DT_INT) {
-            // Añadir el tamaño de un entero.
+            // Add the size of an integer.
             totalSize += sizeof(int);
         } else if (schema->dataTypes[i] == DT_FLOAT) {
-            // Añadir el tamaño de un flotante.
+            // Add the size of a float.
             totalSize += sizeof(float);
         } else if (schema->dataTypes[i] == DT_BOOL) {
-            // Añadir el tamaño de un booleano.
+            // Add the size of a boolean.
             totalSize += sizeof(bool);
         } else {
-            // Manejar tipos de datos inesperados si es necesario.
+            // Handle unexpected data types if necessary.
         }
     }
 
-    // Devolver el tamaño total, incrementado en 1 para tener en cuenta cualquier metadato adicional o marcador de fin de registro.
+    // Return the total size, incremented by 1 to account for any additional metadata or end-of-record marker.
     return totalSize + 1;
 }
-
 
 // This function creates a new schema
 extern Schema *createSchema (int numAttr, char **attrNames, DataType *dataTypes, int *typeLength, int keySize, int *keys) {
