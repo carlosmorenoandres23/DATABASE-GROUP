@@ -33,7 +33,7 @@ extern RC next (RM_ScanHandle *scan, Record *record); //It is made
 extern RC closeScan (RM_ScanHandle *scan); //it is made
 
 // dealing with schemas
-extern int getRecordSize (Schema *schema);
+extern int getRecordSize (Schema *schema); //it is made 
 extern Schema *createSchema (int numAttr, char **attrNames, DataType *dataTypes, int *typeLength, int keySize, int *keys); //it is made 
 extern RC freeSchema (Schema *schema);
 

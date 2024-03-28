@@ -615,37 +615,41 @@ extern RC closeScan(RM_ScanHandle *scan) {
 
 // ******** SCHEMA FUNCTIONS ******** //
 
-// This function returns the record size of the schema referenced by "schema"
+// Calcula el tamaño total requerido para un registro basado en su esquema.
 extern int getRecordSize (Schema *schema)
 {
-	int size = 0, i; // offset set to zero
-	
-	// Iterating through all the attributes in the schema
-	for(i = 0; i < schema->numAttr; i++)
-	{
-		switch(schema->dataTypes[i])
-		{
-			// Switch depending on DATA TYPE of the ATTRIBUTE
-			case DT_STRING:
-				// If attribute is STRING then size = typeLength (Defined Length of STRING)
-				size = size + schema->typeLength[i];
-				break;
-			case DT_INT:
-				// If attribute is INTEGER, then add size of INT
-				size = size + sizeof(int);
-				break;
-			case DT_FLOAT:
-				// If attribite is FLOAT, then add size of FLOAT
-				size = size + sizeof(float);
-				break;
-			case DT_BOOL:
-				// If attribite is BOOLEAN, then add size of BOOLEAN
-				size = size + sizeof(bool);
-				break;
-		}
-	}
-	return ++size;
+    // Inicializar el tamaño total a 0.
+    int totalSize = 0;
+
+    // Verificar que el puntero del esquema no sea nulo.
+    if (schema == NULL) {
+        return -1; // Retornar -1 o un código de error apropiado.
+    }
+
+    // Iterar a través de cada atributo en el esquema.
+    for (int i = 0; i < schema->numAttr; i++) {
+        // Determinar el tamaño a agregar según el tipo de dato del atributo.
+        if (schema->dataTypes[i] == DT_STRING) {
+            // Añadir la longitud predefinida para un atributo de tipo cadena.
+            totalSize += schema->typeLength[i];
+        } else if (schema->dataTypes[i] == DT_INT) {
+            // Añadir el tamaño de un entero.
+            totalSize += sizeof(int);
+        } else if (schema->dataTypes[i] == DT_FLOAT) {
+            // Añadir el tamaño de un flotante.
+            totalSize += sizeof(float);
+        } else if (schema->dataTypes[i] == DT_BOOL) {
+            // Añadir el tamaño de un booleano.
+            totalSize += sizeof(bool);
+        } else {
+            // Manejar tipos de datos inesperados si es necesario.
+        }
+    }
+
+    // Devolver el tamaño total, incrementado en 1 para tener en cuenta cualquier metadato adicional o marcador de fin de registro.
+    return totalSize + 1;
 }
+
 
 // This function creates a new schema
 extern Schema *createSchema (int numAttr, char **attrNames, DataType *dataTypes, int *typeLength, int keySize, int *keys) {
