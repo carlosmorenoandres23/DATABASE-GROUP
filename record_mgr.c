@@ -125,7 +125,7 @@ extern RC createTable (char *name, Schema *schema)
 }
 
 
-
+/*
 // This function opens the table with table name "name"
 extern RC openTable (RM_TableData *rel, char *name)
 {
@@ -197,7 +197,73 @@ extern RC openTable (RM_TableData *rel, char *name)
 
 	return RC_OK;
 }   
+*/
+extern RC openTable (RM_TableData *rel, char *tableName) {
+    SM_PageHandle pageHandle;    
+    
+    int attrCount;
+    
+    // Setting table's meta data to our custom record manager meta data structure
+    rel->mgmtData = recordManager;
+    // Setting the table's name
+    rel->name = tableName;
+    
+    // Pinning a page i.e. putting a page in Buffer Pool using Buffer Manager
+    pinPage(&recordManager->bufferPool, &recordManager->pageHandle, 0);
+    
+    // Setting the initial pointer (0th location) if the record manager's page data
+    pageHandle = (char*) recordManager->pageHandle.data;
+    
+    // Retrieving total number of tuples from the page file
+    // Getting free page from the page file
+    // Getting the number of attributes from the page file
 
+    int* metadata[] = {&recordManager->tuplesCount, &recordManager->freePage, &attrCount};
+
+    for (int i = 0; i < 3; ++i) {
+        *metadata[i] = *(int*)pageHandle;
+        pageHandle += sizeof(int);
+    }
+
+    // Allocating memory space to 'schema'
+    Schema *schema = (Schema*)malloc(sizeof(Schema));
+
+    
+    // Setting schema's parameters
+    schema->numAttr = attrCount;
+    schema->attrNames = (char**) malloc(sizeof(char*) * attrCount);
+    schema->dataTypes = (DataType*) malloc(sizeof(DataType) * attrCount);
+    schema->typeLength = (int*) malloc(sizeof(int) * attrCount);
+
+    // Allocate memory space for storing attribute name for each attribute
+    for (int j = 0; j < attrCount; j++) {
+        schema->attrNames[j] = (char*)malloc(ATTRIBUTE_SIZE + 1); // Allocate space for null-terminator
+        if (schema->attrNames[j] != NULL) {
+            strncpy(schema->attrNames[j], pageHandle, ATTRIBUTE_SIZE);
+            schema->attrNames[j][ATTRIBUTE_SIZE] = '\0'; // Ensure null-termination
+        }
+
+        pageHandle += ATTRIBUTE_SIZE;
+
+        // Retrieve and set data type and length together
+        int* metadata = (int*)pageHandle;
+        schema->dataTypes[j] = metadata[0];
+        schema->typeLength[j] = metadata[1];
+        pageHandle += 2 * sizeof(int);
+    }
+
+    
+    // Setting newly created schema to the table's schema
+    rel->schema = schema;   
+
+    // Unpinning the page i.e. removing it from Buffer Pool using BUffer Manager
+    unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
+
+    // Write the page back to disk using BUffer Manger
+    forcePage(&recordManager->bufferPool, &recordManager->pageHandle);
+
+    return RC_OK;
+} 
 extern RC closeTable (RM_TableData *rel)
 {
 	// Storing the Table's meta data
