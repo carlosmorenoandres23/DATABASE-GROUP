@@ -890,6 +890,15 @@ extern RC freeRecord (Record *record)
 // This function retrieves an attribute from the given record in the specified schema
 extern RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 {
+    if (record == NULL || schema == NULL || value == NULL) {
+        // Handle null pointer error
+        return RC_ERROR;
+    }
+
+    if (attrNum < 0 || attrNum >= schema->numAttr) {
+        // Handle invalid attrNum error
+        return RC_ERROR;
+    }
 	int offset = 0;
 
 	// Getting the ofset value of attributes depending on the attribute number
@@ -897,67 +906,62 @@ extern RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 
 	// Allocating memory space for the Value data structure where the attribute values will be stored
 	Value *attribute = (Value*) malloc(sizeof(Value));
+        if (attribute == NULL) {
+        // Handle memory allocation error
+        return RC_ERROR;
+    }
 
 	// Getting the starting position of record's data in memory
-	char *dataPointer = record->data;
+	char *dataPointer = record->data + offset;
 	
-	// Adding offset to the starting position
-	dataPointer = dataPointer + offset;
+	
 
 	// If attrNum = 1
 	schema->dataTypes[attrNum] = (attrNum == 1) ? 1 : schema->dataTypes[attrNum];
 	
 	// Retrieve attribute's value depending on attribute's data type
-	switch(schema->dataTypes[attrNum])
-	{
-		case DT_STRING:
-		{
-     			// Getting attribute value from an attribute of type STRING
-			int length = schema->typeLength[attrNum];
-			// Allocate space for string hving size - 'length'
-			attribute->v.stringV = (char *) malloc(length + 1);
+	
+    if (schema->dataTypes[attrNum] == DT_STRING)
+    {
+        // Getting attribute value from an attribute of type STRING
+        int length = schema->typeLength[attrNum];
+        // Allocate space for string having size - 'length'
+        attribute->v.stringV = (char *) malloc(length + 1);
 
-			// Copying string to location pointed by dataPointer and appending '\0' which denotes end of string in C
-			strncpy(attribute->v.stringV, dataPointer, length);
-			attribute->v.stringV[length] = '\0';
-			attribute->dt = DT_STRING;
-      			break;
-		}
+        // Copying string to location pointed by dataPointer and appending '\0' which denotes end of string in C
+        strncpy(attribute->v.stringV, dataPointer, length);
+        attribute->v.stringV[length] = '\0';
+        attribute->dt = DT_STRING;
+    }
+    else if (schema->dataTypes[attrNum] == DT_INT)
+    {
+        // Getting attribute value from an attribute of type INTEGER
+        int value = 0;
+        memcpy(&value, dataPointer, sizeof(int));
+        attribute->v.intV = value;
+        attribute->dt = DT_INT;
+    }
+    else if (schema->dataTypes[attrNum] == DT_FLOAT)
+    {
+        // Getting attribute value from an attribute of type FLOAT
+        float value;
+        memcpy(&value, dataPointer, sizeof(float));
+        attribute->v.floatV = value;
+        attribute->dt = DT_FLOAT;
+    }
+    else if (schema->dataTypes[attrNum] == DT_BOOL)
+    {
+        // Getting attribute value from an attribute of type BOOLEAN
+        bool value;
+        memcpy(&value, dataPointer, sizeof(bool));
+        attribute->v.boolV = value;
+        attribute->dt = DT_BOOL;
+    }
+    else
+    {
+        printf("Serializer not defined for the given datatype.\n");
+    }
 
-		case DT_INT:
-		{
-			// Getting attribute value from an attribute of type INTEGER
-			int value = 0;
-			memcpy(&value, dataPointer, sizeof(int));
-			attribute->v.intV = value;
-			attribute->dt = DT_INT;
-      			break;
-		}
-    
-		case DT_FLOAT:
-		{
-			// Getting attribute value from an attribute of type FLOAT
-	  		float value;
-	  		memcpy(&value, dataPointer, sizeof(float));
-	  		attribute->v.floatV = value;
-			attribute->dt = DT_FLOAT;
-			break;
-		}
-
-		case DT_BOOL:
-		{
-			// Getting attribute value from an attribute of type BOOLEAN
-			bool value;
-			memcpy(&value,dataPointer, sizeof(bool));
-			attribute->v.boolV = value;
-			attribute->dt = DT_BOOL;
-      			break;
-		}
-
-		default:
-			printf("Serializer not defined for the given datatype. \n");
-			break;
-	}
 
 	*value = attribute;
 	return RC_OK;
