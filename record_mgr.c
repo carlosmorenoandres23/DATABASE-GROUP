@@ -72,65 +72,57 @@ extern RC shutdownRecordManager ()
     return RC_OK;
 }
 
-extern RC createTable(char *name, Schema *schema) {
+extern RC createTable (char *name, Schema *schema)
+{
+    printf("\ncreateTable start\n");
+
     recordManager = (RecordManager*) malloc(sizeof(RecordManager));
 
-    // Inicializando el buffer pool con la política de reemplazo LFU
+    // Initialize the buffer pool with appropriate parameters
     initBufferPool(&recordManager->bufferPool, name, MAX_NUMBER_OF_PAGES, RS_LRU, NULL);
 
     char data[PAGE_SIZE];
     memset(data, 0, PAGE_SIZE);
     char *pageHandle = data;
 
-    // Establecer el número de tuplas a 0
+    // Set the number of tuples in the table to 0
+    // Set the first page to 1 (0 is reserved for schema and metadata)
+    // Write the number of attributes
+    // Write the key size
+	// Write metadata
     *(int*)pageHandle = 0; 
-    pageHandle += sizeof(int);
+    *((int*)pageHandle + 1) = 1;
+    *((int*)pageHandle + 2) = schema->numAttr;
+    *((int*)pageHandle + 3) = schema->keySize;
+    pageHandle += 4 * sizeof(int);
 
-    // Establecer la primera página a 1 (0 es para esquema y metadatos)
-    *(int*)pageHandle = 1;
-    pageHandle += sizeof(int);
+    for (int k = 0; k < schema->numAttr; k++) {
+		// Write attribute name
+		strncpy(pageHandle, schema->attrNames[k], ATTRIBUTE_SIZE);
+		pageHandle += ATTRIBUTE_SIZE;
 
-    // Escribir el número de atributos
-    *(int*)pageHandle = schema->numAttr;
-    pageHandle += sizeof(int);
+		// Copy data type and type length
+		int data_type_and_length[2] = {(int)schema->dataTypes[k], (int)schema->typeLength[k]};
+		memcpy(pageHandle, data_type_and_length, 2 * sizeof(int));
+		pageHandle += 2 * sizeof(int);
+	}
 
-    // Escribir el tamaño de la clave
-    *(int*)pageHandle = schema->keySize;
-    pageHandle += sizeof(int);
 
-    int k;
-    for(k = 0; k < schema->numAttr; k++) {
-        // Escribir el nombre del atributo
-        strncpy(pageHandle, schema->attrNames[k], ATTRIBUTE_SIZE);
-        pageHandle += ATTRIBUTE_SIZE;
 
-        // Escribir el tipo de dato del atributo
-        *(int*)pageHandle = (int)schema->dataTypes[k];
-        pageHandle += sizeof(int);
-
-        // Escribir la longitud del tipo de dato
-        *(int*)pageHandle = (int) schema->typeLength[k];
-        pageHandle += sizeof(int);
-    }
-
+    // Create and open the page file
     SM_FileHandle fileHandle;
+    createPageFile(name);
+    openPageFile(name, &fileHandle);
 
-    // Crear un archivo de página con el nombre de la tabla
-    RC result;
-    if ((result = createPageFile(name)) != RC_OK) return result;
+    // Write the schema and metadata to the first page of the file
+    writeBlock(0, &fileHandle, data);
 
-    // Abrir el archivo recién creado
-    if ((result = openPageFile(name, &fileHandle)) != RC_OK) return result;
+    // Close the file after writing
+    closePageFile(&fileHandle);
 
-    // Escribir el esquema en la primera ubicación del archivo
-    if ((result = writeBlock(0, &fileHandle, data)) != RC_OK) return result;
-
-    // Cerrar el archivo después de escribir
-    if ((result = closePageFile(&fileHandle)) != RC_OK) return result;
-
+    printf("\ncreateTable completed\n");
     return RC_OK;
 }
-
 
 
 

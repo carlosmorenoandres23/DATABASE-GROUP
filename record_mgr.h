@@ -15,7 +15,7 @@ typedef struct RM_ScanHandle
 // table and manager
 extern RC initRecordManager (void *mgmtData); //it is made
 extern RC shutdownRecordManager (); //it is made 
-extern RC createTable (char *name, Schema *schema);
+extern RC createTable (char *name, Schema *schema); //it is made
 extern RC openTable (RM_TableData *rel, char *name);
 extern RC closeTable (RM_TableData *rel); //it is made 
 extern RC deleteTable (char *name); //it is made 
