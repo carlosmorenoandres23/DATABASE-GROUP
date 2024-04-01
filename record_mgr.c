@@ -5,27 +5,25 @@
 #include "buffer_mgr.h"
 #include "storage_mgr.h"
 
-// This is custom data structure defined for making the use of Record Manager.
+
+// Define the maximum number of pages that can be handled
+const int MAX_NUMBER_OF_PAGES = 100;
+
+// Specify the size of each attribute's name
+const int ATTRIBUTE_SIZE = 15;
+
+// Structure for managing records, utilizing the buffer manager for accessing page files and managing tuples
 typedef struct RecordManager
 {
-	// Buffer Manager's PageHandle for using Buffer Manager to access Page files
-	BM_PageHandle pageHandle;	// Buffer Manager PageHandle 
-	// Buffer Manager's Buffer Pool for using Buffer Manager	
-	BM_BufferPool bufferPool;
-	// Record ID	
-	RID recordID;
-	// This variable defines the condition for scanning the records in the table
-	Expr *condition;
-	// This variable stores the total number of tuples in the table
-	int tuplesCount;
-	// This variable stores the location of first free page which has empty slots in table
-	int freePage;
-	// This variable stores the count of the number of records scanned
-	int scanCount;
+    BM_PageHandle pageHandle;  // Handle to a page in the buffer manager
+    BM_BufferPool bufferPool;  // Pool of buffers for managing pages in memory
+    RID recordID;              // Identifier for a record
+    Expr *condition;           // Expression defining conditions for scanning records
+    int tuplesCount;           // Total number of tuples in the table
+    int freePage;              // Index of the first free page with empty slots
+    int scanCount;             // Count of records scanned
 } RecordManager;
 
-const int MAX_NUMBER_OF_PAGES = 100;
-const int ATTRIBUTE_SIZE = 15; // Size of the name of the attribute
 
 RecordManager *recordManager;
 
