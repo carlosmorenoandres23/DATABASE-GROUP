@@ -326,20 +326,38 @@ extern RC insertRecord (RM_TableData *rel, Record *record)
 	// Setting the Record ID for this record
 	RID *recordID = &record->id; 
 	
-	char *data, *slotPointer;
-	
-	// Getting the size in bytes needed to store on record for the given schema
-	int recordSize = getRecordSize(rel->schema);
+
+    // Getting the size in bytes needed to store one record for the given schema
+    int recordSize = getRecordSize(rel->schema);
+    char *data, *slotPointer;
 	
 	// Setting first free page to the current page
 	recordID->page = recordManager->freePage;
 
 	// Pinning page i.e. telling Buffer Manager that we are using this page
 	pinPage(&recordManager->bufferPool, &recordManager->pageHandle, recordID->page);
+
+    if (recordManager->freePage < 0 || recordManager->freePage >= MAX_NUMBER_OF_PAGES) {
+    // Handle the error condition, e.g., log an error or set an error status
+    fprintf(stderr, "Invalid free page number: %d\n", recordManager->freePage);
+    return -1; // or appropriate error code
+}
 	
+
+    
 	// Setting the data to initial position of record's data
 	data = recordManager->pageHandle.data;
 	
+
+    if (data == NULL) {
+    fprintf(stderr, "Data pointer is NULL.\n");
+    return RC_ERROR;
+}
+
+    // Getting a free slot using our custom function
+    int freeSlot = findFreeSlot(data, recordSize);
+
+
 	// Getting a free slot using our custom function
 	recordID->slot = findFreeSlot(data, recordSize);
 
@@ -365,6 +383,20 @@ extern RC insertRecord (RM_TableData *rel, Record *record)
 	
 	// Mark page dirty to notify that this page was modified
 	markDirty(&recordManager->bufferPool, &recordManager->pageHandle);
+
+
+    // Ensure that the record size is positive
+    if (recordSize <= 0) {
+        fprintf(stderr, "Invalid record size: %d.\n", recordSize);
+        return -1; // Or an appropriate error code
+    }
+
+    // Ensure that the slot index is non-negative
+    if (recordID->slot < 0) {
+        fprintf(stderr, "Invalid slot index: %d.\n", recordID->slot);
+        return -1; // Or an appropriate error code
+    }
+
 	
 	// Calculation slot starting position
 	slotPointer = slotPointer + (recordID->slot * recordSize);
@@ -387,7 +419,7 @@ extern RC insertRecord (RM_TableData *rel, Record *record)
 	return RC_OK;
 }
 
-// Inserta un nuevo registro en la tabla y actualiza el parámetro 'record' con el ID del registro insertado.
+
 
 
 extern RC deleteRecord (RM_TableData *rel, RID id)
