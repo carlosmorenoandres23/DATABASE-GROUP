@@ -123,27 +123,30 @@ extern RC createTable (char *name, Schema *schema)
     return RC_OK;
 }
 
-
+/**
+ * Initializes a table's data structure by loading its metadata and schema from storage. 
+ * This function involves assigning table details, reading metadata, and setting up schema in RM_TableData.
+ */
 
 extern RC openTable (RM_TableData *rel, char *tableName) {
     SM_PageHandle pageHandle;    
     
     int attrCount;
-    
-    // Setting table's meta data to our custom record manager meta data structure
+
+    // Assign the provided record manager structure to the table's management data
     rel->mgmtData = recordManager;
-    // Setting the table's name
+
+    // Assign the provided table name to the table's name field
     rel->name = tableName;
     
-    // Pinning a page i.e. putting a page in Buffer Pool using Buffer Manager
+    // Load the first page into memory using Buffer Manager to access table metadata
     pinPage(&recordManager->bufferPool, &recordManager->pageHandle, 0);
     
-    // Setting the initial pointer (0th location) if the record manager's page data
+    // Assign the data of the pinned page to the page handle for further processing
     pageHandle = (char*) recordManager->pageHandle.data;
     
-    // Retrieving total number of tuples from the page file
-    // Getting free page from the page file
-    // Getting the number of attributes from the page file
+    // Extracting essential metadata: total tuples, free page index, and number of attributes
+    // This information is read sequentially from the beginning of the page
 
     int* metadata[] = {&recordManager->tuplesCount, &recordManager->freePage, &attrCount};
 
@@ -152,45 +155,50 @@ extern RC openTable (RM_TableData *rel, char *tableName) {
         pageHandle += sizeof(int);
     }
 
-    // Allocating memory space to 'schema'
+    // Allocate memory for the schema structure to hold table schema details
     Schema *schema = (Schema*)malloc(sizeof(Schema));
 
-    
-    // Setting schema's parameters
+    // Initialize schema's number of attributes
     schema->numAttr = attrCount;
+
+    // Allocate memory for storing names, data types, and lengths of each attribute
     schema->attrNames = (char**) malloc(sizeof(char*) * attrCount);
     schema->dataTypes = (DataType*) malloc(sizeof(DataType) * attrCount);
     schema->typeLength = (int*) malloc(sizeof(int) * attrCount);
 
-    // Allocate memory space for storing attribute name for each attribute
+    // Iteratively read each attribute's name, data type, and type length from page data
     for (int j = 0; j < attrCount; j++) {
-        schema->attrNames[j] = (char*)malloc(ATTRIBUTE_SIZE + 1); // Allocate space for null-terminator
+        // Allocate space for storing an attribute name and ensure null termination
+        schema->attrNames[j] = (char*)malloc(ATTRIBUTE_SIZE + 1);
         if (schema->attrNames[j] != NULL) {
             strncpy(schema->attrNames[j], pageHandle, ATTRIBUTE_SIZE);
-            schema->attrNames[j][ATTRIBUTE_SIZE] = '\0'; // Ensure null-termination
+            schema->attrNames[j][ATTRIBUTE_SIZE] = '\0';
         }
-
         pageHandle += ATTRIBUTE_SIZE;
 
-        // Retrieve and set data type and length together
+        // Read and assign data type and length for each attribute
         int* metadata = (int*)pageHandle;
         schema->dataTypes[j] = metadata[0];
         schema->typeLength[j] = metadata[1];
         pageHandle += 2 * sizeof(int);
     }
 
-    
-    // Setting newly created schema to the table's schema
+    // Assign the constructed schema to the table's schema field
     rel->schema = schema;   
 
-    // Unpinning the page i.e. removing it from Buffer Pool using BUffer Manager
+    // Release the pinned page from memory, as the required data is now stored in the structure
     unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
 
-    // Write the page back to disk using BUffer Manger
+    // Write any changes made to the page back to the disk for persistence
     forcePage(&recordManager->bufferPool, &recordManager->pageHandle);
 
+    // Return success code after successful table opening and metadata reading
     return RC_OK;
 } 
+
+
+
+
 extern RC closeTable (RM_TableData *rel)
 {
 	// Storing the Table's meta data
