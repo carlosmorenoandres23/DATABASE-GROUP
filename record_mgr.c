@@ -124,79 +124,7 @@ extern RC createTable (char *name, Schema *schema)
 }
 
 
-/*
-// This function opens the table with table name "name"
-extern RC openTable (RM_TableData *rel, char *name)
-{
-	SM_PageHandle pageHandle;    
-	
-	int attributeCount, k;
-	
-	// Setting table's meta data to our custom record manager meta data structure
-	rel->mgmtData = recordManager;
-	// Setting the table's name
-	rel->name = name;
-    
-	// Pinning a page i.e. putting a page in Buffer Pool using Buffer Manager
-	pinPage(&recordManager->bufferPool, &recordManager->pageHandle, 0);
-	
-	// Setting the initial pointer (0th location) if the record manager's page data
-	pageHandle = (char*) recordManager->pageHandle.data;
-	
-	// Retrieving total number of tuples from the page file
-	recordManager->tuplesCount= *(int*)pageHandle;
-	pageHandle = pageHandle + sizeof(int);
 
-	// Getting free page from the page file
-	recordManager->freePage= *(int*) pageHandle;
-    	pageHandle = pageHandle + sizeof(int);
-	
-	// Getting the number of attributes from the page file
-    	attributeCount = *(int*)pageHandle;
-	pageHandle = pageHandle + sizeof(int);
- 	
-	Schema *schema;
-
-	// Allocating memory space to 'schema'
-	schema = (Schema*) malloc(sizeof(Schema));
-    
-	// Setting schema's parameters
-	schema->numAttr = attributeCount;
-	schema->attrNames = (char**) malloc(sizeof(char*) *attributeCount);
-	schema->dataTypes = (DataType*) malloc(sizeof(DataType) *attributeCount);
-	schema->typeLength = (int*) malloc(sizeof(int) *attributeCount);
-
-	// Allocate memory space for storing attribute name for each attribute
-	for(k = 0; k < attributeCount; k++)
-		schema->attrNames[k]= (char*) malloc(ATTRIBUTE_SIZE);
-      
-	for(k = 0; k < schema->numAttr; k++)
-    	{
-		// Setting attribute name
-		strncpy(schema->attrNames[k], pageHandle, ATTRIBUTE_SIZE);
-		pageHandle = pageHandle + ATTRIBUTE_SIZE;
-	   
-		// Setting data type of attribute
-		schema->dataTypes[k]= *(int*) pageHandle;
-		pageHandle = pageHandle + sizeof(int);
-
-		// Setting length of datatype (length of STRING) of the attribute
-		schema->typeLength[k]= *(int*)pageHandle;
-		pageHandle = pageHandle + sizeof(int);
-	}
-	
-	// Setting newly created schema to the table's schema
-	rel->schema = schema;	
-
-	// Unpinning the page i.e. removing it from Buffer Pool using BUffer Manager
-	unpinPage(&recordManager->bufferPool, &recordManager->pageHandle);
-
-	// Write the page back to disk using BUffer Manger
-	forcePage(&recordManager->bufferPool, &recordManager->pageHandle);
-
-	return RC_OK;
-}   
-*/
 extern RC openTable (RM_TableData *rel, char *tableName) {
     SM_PageHandle pageHandle;    
     
