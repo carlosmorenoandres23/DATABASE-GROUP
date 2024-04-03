@@ -17,10 +17,11 @@ typedef struct RecordManager
 {
     BM_PageHandle pageHandle;  // Handle to a page in the buffer manager
     BM_BufferPool bufferPool;  // Pool of buffers for managing pages in memory
-    RID recordID;              // Identifier for a record
-    Expr *condition;           // Expression defining conditions for scanning records
     int tuplesCount;           // Total number of tuples in the table
+    RID recordID;              // Identifier for a record
     int freePage;              // Index of the first free page with empty slots
+    Expr *condition;           // Expression defining conditions for scanning records
+   
     int scanCount;             // Count of records scanned
 } RecordManager;
 
