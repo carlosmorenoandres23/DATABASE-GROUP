@@ -135,3 +135,5 @@
 --> Converts and assigns the data from the 'value' parameter to the attribute's data type and value.
 
 --> Comprehensive functionality for managing tables, records, scans, schemas, and attributes is provided by this Record Manager implementation. In order to maximize system resources, it gives priority to effective memory management. Furthermore, it incorporates a Tombstone mechanism to manage removed entries efficiently, guaranteeing system functionality and data integrity. The database's consistency and structure are maintained while allowing for the appropriate deletion of deleted records thanks to the Tombstone method. This guarantees the system's continued stability and ability to efficiently handle a variety of data management activities.
+
+small change to commit
