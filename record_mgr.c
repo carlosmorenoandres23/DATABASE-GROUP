@@ -198,7 +198,7 @@ extern RC openTable (RM_TableData *rel, char *tableName) {
 
 
 
-
+//close the table inicializated in openTable
 extern RC closeTable (RM_TableData *rel)
 {
 	// Storing the Table's meta data

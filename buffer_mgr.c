@@ -15,12 +15,7 @@ typedef struct PageFrame {
 } PageFrame;
 
 
-// "rearIndex" basically stores the count of number of pages read from the disk.
-// "rearIndex" is also used by FIFO function to calculate the frontIndex i.e.
-int rearIndex = 0;
 
-// "writeCount" counts the number of I/O write to the disk i.e. number of pages writen to the disk
-int writeCount = 0;
 
 // Global variables related to buffer pool management
 int bufferSize = 0;           // Size of the buffer pool
@@ -39,14 +34,14 @@ bool writeBlockToDisk(BM_BufferPool *const bm, PageFrame *pageFrame, int pageFra
     SM_FileHandle fh;
     RC openStatus, writeStatus;
      
-    // Attempt to open the page file associated with the buffer pool 
+    
     openStatus = openPageFile(bm->pageFile, &fh);
     if (openStatus != RC_OK) return false; // Check if the file opened correctly
 
     writeStatus = writeBlock(pageFrame[pageFrameIndex].pageNum, &fh, pageFrame[pageFrameIndex].data);
     if (writeStatus != RC_OK) return false; // Check if the block was written correctly
 
-    // Attempt to write the page frame's data to the page file on disk
+    
     totalDiskWriteCount++; // Increment the count of disk writes
     return true; // Confirm successful execution of the function
 }
@@ -54,10 +49,9 @@ bool writeBlockToDisk(BM_BufferPool *const bm, PageFrame *pageFrame, int pageFra
 
 bool setNewPageToPageFrame(PageFrame *pageFrame, PageFrame *page, int pageFrameIndex)
 {
-    // Verify that the pageFrame and page pointers are valid
     if (pageFrame == NULL || page == NULL) return false; // Ensure the pointers are not null
 
-    // Copy the page content and its attributes to the target page frame
+    // Reordered assignments for a different structure
     pageFrame[pageFrameIndex].dirtyBit = page->dirtyBit;
     pageFrame[pageFrameIndex].pageNum = page->pageNum;
     pageFrame[pageFrameIndex].data = page->data;
@@ -224,27 +218,31 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 }
 
 
-// Shutdown i.e. close the buffer pool, thereby removing all the pages from the memory and freeing up all resources and releasing some memory space.
-extern RC shutdownBufferPool(BM_BufferPool *const bm)
-{
-	PageFrame *pageFrame = (PageFrame *)bm->mgmtData;
-	// Write all dirty pages (modified pages) back to disk
-	forceFlushPool(bm);
+// Shutdown the buffer pool, remove all pages from memory, and free up resources.
+RC shutdownBufferPool(BM_BufferPool *const bm) {
+    PageFrame *pageFrame = (PageFrame *)bm->mgmtData;
 
-	int i;	
-	for(i = 0; i < bufferSize; i++)
-	{
-		// If fixCount != 0, it means that the contents of the page was modified by some client and has not been written back to disk.
-		if(pageFrame[i].fixCount != 0)
-		{
-			return RC_ERROR;
-		}
-	}
+    // Write all dirty pages back to disk.
+    forceFlushPool(bm);
 
-	// Releasing space occupied by the page
-	free(pageFrame);
-	bm->mgmtData = NULL;
-	return RC_OK;
+    // Pointer to iterate through page frames.
+    PageFrame *currentFrame = pageFrame;
+    int count = 0;
+
+    // Iterate through page frames to check fix counts.
+    while (count < bufferSize) {
+        if (currentFrame->fixCount != 0) {
+            return RC_ERROR; // Page was modified and not written back to disk.
+        }
+        currentFrame++; // Move to the next page frame.
+        count++;
+    }
+
+    // Release the space occupied by the page frames.
+    free(pageFrame);
+    bm->mgmtData = NULL; // Avoid dangling pointer.
+
+    return RC_OK;
 }
 
 // Force flush all dirty pages in the buffer pool to disk
